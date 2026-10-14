@@ -1,0 +1,54 @@
+# Schema-linking test set: each question lists the tables it can't be answered
+# without. Phrased differently from the descriptions on purpose (clients,
+# complaints, best-selling...) so it measures understanding, not word overlap.
+
+- question: How many clients do we have in Germany?
+  tables: [customers]
+- question: Which shoppers signed up in 2025?
+  tables: [customers]
+- question: What were total sales last quarter?
+  tables: [orders]
+- question: How many purchases were sent back?
+  tables: [orders]
+- question: Which products are most often bought together?
+  tables: [order_items, products]
+- question: What is our best-selling item in the Furniture category?
+  tables: [order_items, products]
+- question: How many urgent complaints are still open?
+  tables: [support_tickets]
+- question: What's the average time between sign-up and first purchase?
+  tables: [customers, orders]
+- question: Which country brings in the most net revenue?
+  tables: [customers, orders]
+- question: What share of web orders were cancelled?
+  tables: [orders]
+- question: List the 10 most expensive products.
+  tables: [products]
+- question: How many units of Laptop Pro 14 were sold in 2025?
+  tables: [order_items, orders, products]
+- question: Do corporate accounts raise more support requests than consumers?
+  tables: [customers, support_tickets]
+- question: What's the average basket size in units?
+  tables: [order_items]
+- question: Show the monthly trend of new registrations.
+  tables: [customers]
+- question: Which supplier's products bring in the most money?
+  tables: [order_items, orders, products]
+- question: How many tickets mention damaged goods?
+  tables: [support_tickets]
+- question: What's the AOV for mobile app orders?
+  tables: [orders]
+- question: Which customers from India have unresolved tickets?
+  tables: [customers, support_tickets]
+- question: Revenue by product category for Japanese customers
+  tables: [customers, order_items, orders, products]
+- question: How quickly are high priority tickets resolved?
+  tables: [support_tickets]
+- question: What fraction of buyers have shopped in our physical store?
+  tables: [customers, orders]
+- question: How many line items does a typical order have?
+  tables: [order_items]
+- question: Which category has the highest average list price?
+  tables: [products]
+- question: Did people who complained about late delivery order again afterwards?
+  tables: [orders, support_tickets]

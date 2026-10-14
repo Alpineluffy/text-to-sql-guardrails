@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "text2sql"
+version = "0.1.0"
+description = "Text-to-SQL with guardrails and hallucination detection"
+requires-python = ">=3.9"
+dependencies = [
+    "sqlalchemy>=2.0,<2.1",  # 2.1 changes the default PostgreSQL driver; upgrade deliberately
+    "pyyaml>=6",
+    "numpy>=1.24",
+    "anthropic>=0.125",
+    "sqlglot>=30.21,<31",  # SQL parsing details matter to the guardrails; upgrade deliberately
+    "pandas>=2",
+]
+
+[project.optional-dependencies]
+embeddings = ["sentence-transformers>=3"]
+postgres = ["psycopg2-binary>=2.9"]
+web = ["fastapi>=0.110", "uvicorn[standard]>=0.29", "streamlit>=1.35", "streamlit-ace>=0.1.1",
+       "httpx>=0.27"]
+dev = ["pytest>=7"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["slow: loads the real embedding model (run with RUN_SLOW=1)"]

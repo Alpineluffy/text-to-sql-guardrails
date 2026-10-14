@@ -1,0 +1,131 @@
+# Verified question -> SQL pairs for the sample database (SQLite dialect).
+# Every query here is executed by the test suite, so broken examples fail CI.
+
+- question: How many customers are there in each country?
+  sql: |
+    SELECT country, COUNT(*) AS customers
+    FROM customers
+    GROUP BY country
+    ORDER BY customers DESC;
+
+- question: What was the gross revenue per month in 2025?
+  sql: |
+    SELECT strftime('%Y-%m', order_date) AS month,
+           ROUND(SUM(total_amount), 2) AS gross_revenue
+    FROM orders
+    WHERE status <> 'CANCELLED'
+      AND order_date >= '2025-01-01' AND order_date < '2026-01-01'
+    GROUP BY month
+    ORDER BY month;
+
+- question: What is the net revenue for each customer segment?
+  sql: |
+    SELECT c.segment, ROUND(SUM(o.total_amount), 2) AS net_revenue
+    FROM orders o
+    JOIN customers c ON c.id = o.customer_id
+    WHERE o.status NOT IN ('CANCELLED', 'RETURNED')
+    GROUP BY c.segment
+    ORDER BY net_revenue DESC;
+
+- question: What are the top 5 products by units sold?
+  sql: |
+    SELECT p.name, SUM(oi.quantity) AS units_sold
+    FROM order_items oi
+    JOIN orders o ON o.id = oi.order_id
+    JOIN products p ON p.id = oi.product_id
+    WHERE o.status <> 'CANCELLED'
+    GROUP BY p.id, p.name
+    ORDER BY units_sold DESC
+    LIMIT 5;
+
+- question: Show gross revenue by product category.
+  sql: |
+    SELECT p.category, ROUND(SUM(oi.quantity * oi.unit_price), 2) AS gross_revenue
+    FROM order_items oi
+    JOIN orders o ON o.id = oi.order_id
+    JOIN products p ON p.id = oi.product_id
+    WHERE o.status <> 'CANCELLED'
+    GROUP BY p.category
+    ORDER BY gross_revenue DESC;
+
+- question: What is the average order value by sales channel?
+  sql: |
+    SELECT channel, ROUND(AVG(total_amount), 2) AS average_order_value
+    FROM orders
+    WHERE status <> 'CANCELLED'
+    GROUP BY channel
+    ORDER BY average_order_value DESC;
+
+- question: How many orders were delivered in 2025?
+  sql: |
+    SELECT COUNT(*) AS delivered_orders
+    FROM orders
+    WHERE status = 'DELIVERED'
+      AND order_date >= '2025-01-01' AND order_date < '2026-01-01';
+
+- question: What percentage of orders were cancelled?
+  sql: |
+    SELECT ROUND(100.0 * SUM(CASE WHEN status = 'CANCELLED' THEN 1 ELSE 0 END) / COUNT(*), 2)
+           AS cancelled_pct
+    FROM orders;
+
+- question: How many customers from India placed more than 5 orders?
+  sql: |
+    SELECT COUNT(*) AS customers
+    FROM (
+      SELECT o.customer_id
+      FROM orders o
+      JOIN customers c ON c.id = o.customer_id
+      WHERE c.country = 'India'
+      GROUP BY o.customer_id
+      HAVING COUNT(*) > 5
+    ) AS frequent_buyers;
+
+- question: How many customers have never placed an order?
+  sql: |
+    SELECT COUNT(*) AS customers_without_orders
+    FROM customers c
+    WHERE NOT EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = c.id);
+
+- question: How many new customers signed up each month in 2024?
+  sql: |
+    SELECT strftime('%Y-%m', created_at) AS month, COUNT(*) AS new_customers
+    FROM customers
+    WHERE created_at >= '2024-01-01' AND created_at < '2025-01-01'
+    GROUP BY month
+    ORDER BY month;
+
+- question: How many open support tickets are there for each priority?
+  sql: |
+    SELECT priority, COUNT(*) AS open_tickets
+    FROM support_tickets
+    WHERE NOT resolved
+    GROUP BY priority
+    ORDER BY open_tickets DESC;
+
+- question: Which countries have the most support tickets?
+  sql: |
+    SELECT c.country, COUNT(*) AS tickets
+    FROM support_tickets t
+    JOIN customers c ON c.id = t.customer_id
+    GROUP BY c.country
+    ORDER BY tickets DESC;
+
+- question: What is the average number of units per order?
+  sql: |
+    SELECT ROUND(AVG(units), 2) AS avg_units_per_order
+    FROM (
+      SELECT order_id, SUM(quantity) AS units
+      FROM order_items
+      GROUP BY order_id
+    ) AS per_order;
+
+- question: How many orders were placed through the mobile app each quarter of 2025?
+  sql: |
+    SELECT (CAST(strftime('%m', order_date) AS INTEGER) + 2) / 3 AS quarter,
+           COUNT(*) AS orders
+    FROM orders
+    WHERE channel = 'mobile'
+      AND order_date >= '2025-01-01' AND order_date < '2026-01-01'
+    GROUP BY quarter
+    ORDER BY quarter;

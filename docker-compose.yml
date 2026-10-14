@@ -1,0 +1,74 @@
+# The full stack: PostgreSQL seeded with the sample data, the API and the UI.
+#
+#   docker compose up --build        then open http://localhost:8501
+#
+# Without ANTHROPIC_API_KEY in your environment (or .env) the API runs in demo
+# mode. Passwords below are development defaults: override them in .env and
+# never reuse them anywhere real. Ports are bound to localhost only; the API
+# has no authentication.
+
+x-app: &app
+  build: .
+  image: text2sql-app
+  environment: &app-env
+    TEXT2SQL_DB_URL: postgresql://text2sql_reader:${TEXT2SQL_READER_PASSWORD:-reader-dev-only}@postgres:5432/text2sql
+    TEXT2SQL_PG_ADMIN_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/text2sql
+    TEXT2SQL_READER_PASSWORD: ${TEXT2SQL_READER_PASSWORD:-reader-dev-only}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: text2sql
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    ports:
+      - "127.0.0.1:5433:5432"   # 5433 so it can't clash with a local Postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d text2sql"]
+      interval: 2s
+      retries: 30
+
+  # One-off: loads the sample data, creates the SELECT-only role, verifies it.
+  setup:
+    <<: *app
+    command: ["setup"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    <<: *app
+    command: ["api"]
+    environment:
+      <<: *app-env
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    depends_on:
+      setup:
+        condition: service_completed_successfully
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - appdata:/app/cache
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/v1/health')"]
+      interval: 5s
+      retries: 30
+
+  ui:
+    <<: *app
+    command: ["ui"]
+    environment:
+      TEXT2SQL_API_URL: http://api:8000
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8501:8501"
+
+volumes:
+  pgdata:
+  appdata:

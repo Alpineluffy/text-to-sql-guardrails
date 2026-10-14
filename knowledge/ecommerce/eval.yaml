@@ -1,0 +1,306 @@
+# Accuracy test set: questions with verified answers (SQLite dialect).
+# Answers are compared by result, not SQL text. "today" is pinned so that
+# relative dates ("last quarter") always mean the same thing.
+# Every gold query is executed by the test suite.
+
+today: 2026-10-06
+
+cases:
+  - question: How many customers are there?
+    sql: SELECT COUNT(*) FROM customers
+
+  - question: How many orders were cancelled?
+    sql: SELECT COUNT(*) FROM orders WHERE status = 'CANCELLED'
+    tags: [value-case]
+
+  - question: How many orders came through the web channel?
+    sql: SELECT COUNT(*) FROM orders WHERE channel = 'web'
+
+  - question: What is our total gross revenue?
+    sql: SELECT ROUND(SUM(total_amount), 2) FROM orders WHERE status <> 'CANCELLED'
+    tags: [glossary]
+
+  - question: What is our total net revenue?
+    sql: SELECT ROUND(SUM(total_amount), 2) FROM orders WHERE status NOT IN ('CANCELLED', 'RETURNED')
+    tags: [glossary]
+
+  - question: What was net revenue last quarter?
+    sql: |
+      SELECT ROUND(SUM(total_amount), 2) FROM orders
+      WHERE status NOT IN ('CANCELLED', 'RETURNED')
+        AND order_date >= '2026-07-01' AND order_date <= '2026-09-30'
+    tags: [glossary, relative-date]
+
+  - question: How many orders have been placed this year?
+    sql: SELECT COUNT(*) FROM orders WHERE order_date >= '2026-01-01' AND order_date <= '2026-10-06'
+    tags: [relative-date]
+
+  - question: How many orders were placed in 2025?
+    sql: SELECT COUNT(*) FROM orders WHERE order_date >= '2025-01-01' AND order_date < '2026-01-01'
+
+  - question: What was the average order value in 2025?
+    sql: |
+      SELECT ROUND(AVG(total_amount), 2) FROM orders
+      WHERE status <> 'CANCELLED' AND order_date >= '2025-01-01' AND order_date < '2026-01-01'
+    tags: [glossary]
+
+  - question: Which country has the most customers?
+    sql: SELECT country FROM customers GROUP BY country ORDER BY COUNT(*) DESC LIMIT 1
+
+  - question: What are the top 3 product categories by gross revenue?
+    sql: |
+      SELECT p.category, ROUND(SUM(oi.quantity * oi.unit_price), 2) AS revenue
+      FROM order_items oi
+      JOIN orders o ON o.id = oi.order_id
+      JOIN products p ON p.id = oi.product_id
+      WHERE o.status <> 'CANCELLED'
+      GROUP BY p.category ORDER BY revenue DESC LIMIT 3
+    tags: [join, ranking, glossary]
+
+  - question: How many units of Laptop Pro 14 have been sold?
+    sql: |
+      SELECT SUM(oi.quantity) FROM order_items oi
+      JOIN orders o ON o.id = oi.order_id
+      JOIN products p ON p.id = oi.product_id
+      WHERE p.name = 'Laptop Pro 14' AND o.status <> 'CANCELLED'
+    tags: [join, glossary]
+
+  - question: How many different customers placed an order in 2026?
+    sql: |
+      SELECT COUNT(DISTINCT customer_id) FROM orders
+      WHERE order_date >= '2026-01-01' AND order_date < '2027-01-01'
+
+  - question: How many customers have never placed an order?
+    sql: |
+      SELECT COUNT(*) FROM customers c
+      WHERE NOT EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = c.id)
+    tags: [subquery]
+
+  - question: How many support tickets are still unresolved?
+    sql: SELECT COUNT(*) FROM support_tickets WHERE NOT resolved
+    tags: [glossary]
+
+  - question: How many urgent tickets are still open?
+    sql: SELECT COUNT(*) FROM support_tickets WHERE priority = 'urgent' AND NOT resolved
+
+  - question: Which customer segment brings in the most net revenue?
+    sql: |
+      SELECT c.segment FROM orders o JOIN customers c ON c.id = o.customer_id
+      WHERE o.status NOT IN ('CANCELLED', 'RETURNED')
+      GROUP BY c.segment ORDER BY SUM(o.total_amount) DESC LIMIT 1
+    tags: [join, glossary, ranking]
+
+  - question: What is the gross revenue from customers in Germany?
+    sql: |
+      SELECT ROUND(SUM(o.total_amount), 2) FROM orders o JOIN customers c ON c.id = o.customer_id
+      WHERE c.country = 'Germany' AND o.status <> 'CANCELLED'
+    tags: [join, glossary]
+
+  - question: What percentage of orders were returned?
+    sql: |
+      SELECT ROUND(100.0 * SUM(CASE WHEN status = 'RETURNED' THEN 1 ELSE 0 END) / COUNT(*), 2)
+      FROM orders
+    tags: [value-case]
+
+  - question: What is the average number of units per order?
+    sql: |
+      SELECT ROUND(AVG(units), 2) FROM (
+        SELECT order_id, SUM(quantity) AS units FROM order_items GROUP BY order_id
+      ) AS per_order
+    tags: [subquery]
+
+  - question: How many orders were placed each month in 2025?
+    sql: |
+      SELECT strftime('%Y-%m', order_date) AS month, COUNT(*) FROM orders
+      WHERE order_date >= '2025-01-01' AND order_date < '2026-01-01'
+      GROUP BY month ORDER BY month
+
+  - question: Which sales channel has the most orders?
+    sql: SELECT channel FROM orders GROUP BY channel ORDER BY COUNT(*) DESC LIMIT 1
+
+  - question: How many products are in the Electronics category?
+    sql: SELECT COUNT(*) FROM products WHERE category = 'Electronics'
+
+  - question: What is our most expensive product?
+    sql: SELECT name FROM products ORDER BY unit_price DESC LIMIT 1
+
+  - question: What is the average list price of furniture products?
+    sql: SELECT ROUND(AVG(unit_price), 2) FROM products WHERE category = 'Furniture'
+    tags: [value-case]
+
+  - question: How many orders have more than 3 line items?
+    sql: |
+      SELECT COUNT(*) FROM (
+        SELECT order_id FROM order_items GROUP BY order_id HAVING COUNT(*) > 3
+      ) AS big_orders
+    tags: [subquery]
+
+  - question: What was gross revenue by sales channel in Q2 2026?
+    sql: |
+      SELECT channel, ROUND(SUM(total_amount), 2) FROM orders
+      WHERE status <> 'CANCELLED' AND order_date >= '2026-04-01' AND order_date <= '2026-06-30'
+      GROUP BY channel
+    tags: [glossary]
+
+  - question: How many new customers signed up in 2025?
+    sql: SELECT COUNT(*) FROM customers WHERE created_at >= '2025-01-01' AND created_at < '2026-01-01'
+    tags: [glossary]
+
+  - question: How many support tickets were opened by customers in India?
+    sql: |
+      SELECT COUNT(*) FROM support_tickets t JOIN customers c ON c.id = t.customer_id
+      WHERE c.country = 'India'
+    tags: [join]
+
+  - question: How many delivered orders were placed in the last 30 days?
+    sql: |
+      SELECT COUNT(*) FROM orders
+      WHERE status = 'DELIVERED' AND order_date >= '2026-09-06' AND order_date <= '2026-10-06'
+    tags: [relative-date, value-case]
+
+  # --- more lookups, joins, grouping and dates ---------------------------------
+
+  - question: What product categories do we sell?
+    sql: SELECT DISTINCT category FROM products
+
+  - question: How many customers are in the Corporate segment?
+    sql: SELECT COUNT(*) FROM customers WHERE segment = 'Corporate'
+
+  - question: What is the list price of the Standing Desk?
+    sql: SELECT unit_price FROM products WHERE name = 'Standing Desk'
+
+  - question: How many orders came from customers in the United States?
+    sql: |
+      SELECT COUNT(*) FROM orders o JOIN customers c ON c.id = o.customer_id
+      WHERE c.country = 'United States'
+    tags: [join]
+
+  - question: What is the average order value in each country?
+    sql: |
+      SELECT c.country, ROUND(AVG(o.total_amount), 2) FROM orders o
+      JOIN customers c ON c.id = o.customer_id
+      WHERE o.status <> 'CANCELLED' GROUP BY c.country
+    tags: [join, glossary]
+
+  - question: How many orders were placed in each quarter of 2025?
+    sql: |
+      SELECT (CAST(strftime('%m', order_date) AS INTEGER) + 2) / 3 AS quarter, COUNT(*)
+      FROM orders WHERE order_date >= '2025-01-01' AND order_date < '2026-01-01'
+      GROUP BY quarter ORDER BY quarter
+
+  - question: Which quarter of 2025 had the most orders?
+    sql: |
+      SELECT (CAST(strftime('%m', order_date) AS INTEGER) + 2) / 3 AS quarter FROM orders
+      WHERE order_date >= '2025-01-01' AND order_date < '2026-01-01'
+      GROUP BY quarter ORDER BY COUNT(*) DESC LIMIT 1
+    tags: [ranking]
+
+  - question: How many products have never been ordered?
+    sql: |
+      SELECT COUNT(*) FROM products p
+      WHERE NOT EXISTS (SELECT 1 FROM order_items oi WHERE oi.product_id = p.id)
+    tags: [subquery]
+
+  - question: How many units were sold in each product category?
+    sql: |
+      SELECT p.category, SUM(oi.quantity) FROM order_items oi
+      JOIN orders o ON o.id = oi.order_id JOIN products p ON p.id = oi.product_id
+      WHERE o.status <> 'CANCELLED' GROUP BY p.category
+    tags: [join, glossary]
+
+  - question: How many support tickets are there for each priority?
+    sql: SELECT priority, COUNT(*) FROM support_tickets GROUP BY priority
+
+  - question: What percentage of support tickets have been resolved?
+    sql: |
+      SELECT ROUND(100.0 * SUM(CASE WHEN resolved THEN 1 ELSE 0 END) / COUNT(*), 2)
+      FROM support_tickets
+
+  - question: How many customers signed up in each year?
+    sql: |
+      SELECT strftime('%Y', created_at) AS year, COUNT(*) FROM customers
+      GROUP BY year ORDER BY year
+
+  - question: What was gross revenue in September 2026?
+    sql: |
+      SELECT ROUND(SUM(total_amount), 2) FROM orders
+      WHERE status <> 'CANCELLED' AND order_date >= '2026-09-01' AND order_date <= '2026-09-30'
+    tags: [glossary]
+
+  - question: What is the average number of line items per order?
+    sql: |
+      SELECT ROUND(AVG(n), 2) FROM (
+        SELECT order_id, COUNT(*) AS n FROM order_items GROUP BY order_id
+      ) AS per_order
+    tags: [subquery]
+
+  - question: Which 3 customers generated the most gross revenue? Show their customer ids.
+    sql: |
+      SELECT customer_id, ROUND(SUM(total_amount), 2) AS revenue FROM orders
+      WHERE status <> 'CANCELLED' GROUP BY customer_id ORDER BY revenue DESC LIMIT 3
+    tags: [ranking, glossary]
+
+  # --- ambiguous: the system should ask, not guess ------------------------------
+  # `accept` lists the right answer for each reading; without it only the
+  # behaviour (asking) is scored, since the readings have no single right result.
+
+  - question: What was revenue last month?
+    expect: clarify
+    accept:
+      - |
+        SELECT ROUND(SUM(total_amount), 2) FROM orders
+        WHERE status <> 'CANCELLED' AND order_date >= '2026-09-01' AND order_date <= '2026-09-30'
+      - |
+        SELECT ROUND(SUM(total_amount), 2) FROM orders
+        WHERE status NOT IN ('CANCELLED', 'RETURNED')
+          AND order_date >= '2026-09-01' AND order_date <= '2026-09-30'
+    tags: [ambiguous, relative-date]
+
+  - question: Show me revenue by sales channel.
+    expect: clarify
+    accept:
+      - |
+        SELECT channel, ROUND(SUM(total_amount), 2) FROM orders
+        WHERE status <> 'CANCELLED' GROUP BY channel
+      - |
+        SELECT channel, ROUND(SUM(total_amount), 2) FROM orders
+        WHERE status NOT IN ('CANCELLED', 'RETURNED') GROUP BY channel
+    tags: [ambiguous]
+
+  - question: Who are our best customers?
+    expect: clarify
+    tags: [ambiguous]
+
+  - question: Which is our top product?
+    expect: clarify
+    tags: [ambiguous]
+
+  - question: How big is a typical order?
+    expect: clarify
+    tags: [ambiguous]
+
+  # --- not answerable from this database: must say so, not invent SQL -----------
+
+  - question: What is our profit margin on laptops?
+    expect: cannot_answer
+    tags: [unanswerable]
+
+  - question: How many employees work in our support team?
+    expect: cannot_answer
+    tags: [unanswerable]
+
+  - question: What was the weather in Berlin last week?
+    expect: cannot_answer
+    tags: [unanswerable]
+
+  - question: Which supplier delivers orders the fastest?
+    expect: cannot_answer
+    tags: [unanswerable]
+
+  - question: What is the average age of our customers?
+    expect: cannot_answer
+    tags: [unanswerable]
+
+  - question: How many people visited our website yesterday?
+    expect: cannot_answer
+    tags: [unanswerable]

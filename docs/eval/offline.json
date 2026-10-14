@@ -1,0 +1,204 @@
+{
+  "measured_at": "2026-10-14",
+  "dataset": {
+    "total": 56,
+    "by_expect": {
+      "answer": 45,
+      "clarify": 5,
+      "cannot_answer": 6
+    },
+    "databases": [
+      "sqlite",
+      "postgresql"
+    ]
+  },
+  "mutation": {
+    "detection_rate": 0.8333333333333334,
+    "false_alarm_rate": 0.0,
+    "mutants": 102,
+    "gold_checked": 45,
+    "by_kind": {
+      "drop_date": {
+        "n": 11,
+        "detected": 11,
+        "rate": 1.0
+      },
+      "drop_limit": {
+        "n": 7,
+        "detected": 7,
+        "rate": 1.0
+      },
+      "drop_status": {
+        "n": 14,
+        "detected": 12,
+        "rate": 0.8571428571428571
+      },
+      "fanout_join": {
+        "n": 9,
+        "detected": 9,
+        "rate": 1.0
+      },
+      "value_case": {
+        "n": 23,
+        "detected": 23,
+        "rate": 1.0
+      },
+      "wrong_agg": {
+        "n": 15,
+        "detected": 0,
+        "rate": 0.0
+      },
+      "wrong_value": {
+        "n": 23,
+        "detected": 23,
+        "rate": 1.0
+      }
+    },
+    "false_alarms": [],
+    "missed": [
+      {
+        "question": "What is our total gross revenue?",
+        "kind": "wrong_agg",
+        "sql": "SELECT ROUND(AVG(total_amount), 2) FROM orders WHERE status <> 'CANCELLED'",
+        "detected": false,
+        "problems": []
+      },
+      {
+        "question": "What is our total net revenue?",
+        "kind": "wrong_agg",
+        "sql": "SELECT ROUND(AVG(total_amount), 2) FROM orders WHERE NOT status IN ('CANCELLED', 'RETURNED')",
+        "detected": false,
+        "problems": []
+      },
+      {
+        "question": "What was net revenue last quarter?",
+        "kind": "wrong_agg",
+        "sql": "SELECT ROUND(AVG(total_amount), 2) FROM orders WHERE NOT status IN ('CANCELLED', 'RETURNED') AND order_date >= '2026-07-01' AND order_date <= '2026-09-30'",
+        "detected": false,
+        "problems": []
+      },
+      {
+        "question": "What are the top 3 product categories by gross revenue?",
+        "kind": "wrong_agg",
+        "sql": "SELECT p.category, ROUND(AVG(oi.quantity * oi.unit_price), 2) AS revenue FROM order_items AS oi JOIN orders AS o ON o.id = oi.order_id JOIN products AS p ON p.id = oi.product_id WHERE o.status <> 'CANCELLED' GROUP BY p.category ORDER BY revenue DESC LIMIT 3",
+        "detected": false,
+        "problems": []
+      },
+      {
+        "question": "How many units of Laptop Pro 14 have been sold?",
+        "kind": "drop_status",
+        "sql": "SELECT SUM(oi.quantity) FROM order_items AS oi JOIN orders AS o ON o.id = oi.order_id JOIN products AS p ON p.id = oi.product_id WHERE p.name = 'Laptop Pro 14'",
+        "detected": false,
+        "problems": []
+      },
+      {
+        "question": "How many units of Laptop Pro 14 have been sold?",
+        "kind": "wrong_agg",
+        "sql": "SELECT AVG(oi.quantity) FROM order_items AS oi JOIN orders AS o ON o.id = oi.order_id JOIN products AS p ON p.id = oi.product_id WHERE p.name = 'Laptop Pro 14' AND o.status <> 'CANCELLED'",
+        "detected": false,
+        "problems": []
+      },
+      {
+        "question": "What is the gross revenue from customers in Germany?",
+        "kind": "wrong_agg",
+        "sql": "SELECT ROUND(AVG(o.total_amount), 2) FROM orders AS o JOIN customers AS c ON c.id = o.customer_id WHERE c.country = 'Germany' AND o.status <> 'CANCELLED'",
+        "detected": false,
+        "problems": []
+      },
+      {
+        "question": "What percentage of orders were returned?",
+        "kind": "wrong_agg",
+        "sql": "SELECT ROUND(100.0 * AVG(CASE WHEN status = 'RETURNED' THEN 1 ELSE 0 END) / COUNT(*), 2) FROM orders",
+        "detected": false,
+        "problems": []
+      },
+      {
+        "question": "What is the average number of units per order?",
+        "kind": "wrong_agg",
+        "sql": "SELECT ROUND(AVG(units), 2) FROM (SELECT order_id, AVG(quantity) AS units FROM order_items GROUP BY order_id) AS per_order",
+        "detected": false,
+        "problems": []
+      },
+      {
+        "question": "What was gross revenue by sales channel in Q2 2026?",
+        "kind": "wrong_agg",
+        "sql": "SELECT channel, ROUND(AVG(total_amount), 2) FROM orders WHERE status <> 'CANCELLED' AND order_date >= '2026-04-01' AND order_date <= '2026-06-30' GROUP BY channel",
+        "detected": false,
+        "problems": []
+      },
+      {
+        "question": "How many support tickets were opened by customers in India?",
+        "kind": "wrong_agg",
+        "sql": "SELECT COUNT(DISTINCT c.id) FROM support_tickets AS t JOIN customers AS c ON c.id = t.customer_id WHERE c.country = 'India'",
+        "detected": false,
+        "problems": []
+      },
+      {
+        "question": "How many orders came from customers in the United States?",
+        "kind": "wrong_agg",
+        "sql": "SELECT COUNT(DISTINCT c.id) FROM orders AS o JOIN customers AS c ON c.id = o.customer_id WHERE c.country = 'United States'",
+        "detected": false,
+        "problems": []
+      },
+      {
+        "question": "How many units were sold in each product category?",
+        "kind": "drop_status",
+        "sql": "SELECT p.category, SUM(oi.quantity) FROM order_items AS oi JOIN orders AS o ON o.id = oi.order_id JOIN products AS p ON p.id = oi.product_id GROUP BY p.category",
+        "detected": false,
+        "problems": []
+      },
+      {
+        "question": "How many units were sold in each product category?",
+        "kind": "wrong_agg",
+        "sql": "SELECT p.category, AVG(oi.quantity) FROM order_items AS oi JOIN orders AS o ON o.id = oi.order_id JOIN products AS p ON p.id = oi.product_id WHERE o.status <> 'CANCELLED' GROUP BY p.category",
+        "detected": false,
+        "problems": []
+      },
+      {
+        "question": "What percentage of support tickets have been resolved?",
+        "kind": "wrong_agg",
+        "sql": "SELECT ROUND(100.0 * AVG(CASE WHEN resolved THEN 1 ELSE 0 END) / COUNT(*), 2) FROM support_tickets",
+        "detected": false,
+        "problems": []
+      },
+      {
+        "question": "What was gross revenue in September 2026?",
+        "kind": "wrong_agg",
+        "sql": "SELECT ROUND(AVG(total_amount), 2) FROM orders WHERE status <> 'CANCELLED' AND order_date >= '2026-09-01' AND order_date <= '2026-09-30'",
+        "detected": false,
+        "problems": []
+      },
+      {
+        "question": "Which 3 customers generated the most gross revenue? Show their customer ids.",
+        "kind": "wrong_agg",
+        "sql": "SELECT customer_id, ROUND(AVG(total_amount), 2) AS revenue FROM orders WHERE status <> 'CANCELLED' GROUP BY customer_id ORDER BY revenue DESC LIMIT 3",
+        "detected": false,
+        "problems": []
+      }
+    ]
+  },
+  "security": {
+    "attacks": 38,
+    "refused": 38,
+    "executed": [],
+    "db_layer_checked": 37,
+    "db_layer_refused": 36,
+    "pg_attacks": 21,
+    "pg_refused": 21,
+    "legitimate": 61,
+    "false_blocks": [],
+    "database_unchanged": true,
+    "db_layer_allowed": [
+      "BEGIN TRANSACTION"
+    ],
+    "fingerprint": {
+      "objects": 6,
+      "customers": 200,
+      "order_items": 2565,
+      "orders": 1000,
+      "products": 30,
+      "support_tickets": 150,
+      "order_summary": 1000
+    }
+  }
+}

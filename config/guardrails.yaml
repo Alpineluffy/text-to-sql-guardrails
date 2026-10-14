@@ -1,0 +1,18 @@
+# Guardrails applied to every generated query before it runs.
+# Any setting left out keeps its default (src/text2sql/guardrails/config.py).
+# Use null to switch a numeric rule off.
+
+max_rows: 1000              # add LIMIT 1000 when missing; lower larger limits
+max_subquery_depth: 3       # SELECTs nested deeper than this are rejected
+max_scan_rows: 1000000      # reject queries whose plan reads more rows than this
+block_sensitive_columns: true
+block_cartesian_joins: true
+
+# Tables nobody may query, e.g. [audit_log, api_keys]
+blocked_tables: []
+
+# Set to a list to allow ONLY these tables; null allows every table.
+allowed_tables: null
+
+# blocked_functions: leave out to use the built-in list (file access, sleep,
+# locks, settings, resource exhaustion across SQLite/PostgreSQL/MySQL).

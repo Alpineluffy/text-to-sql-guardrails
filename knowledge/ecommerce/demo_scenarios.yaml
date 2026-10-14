@@ -1,0 +1,39 @@
+# Demo mode only: scripted model output that reproduces typical text-to-SQL
+# mistakes, so the safety layers can be shown working without an API key.
+# Everything *after* the model (validation, guardrails, sandbox, result
+# checks, second-query comparison) runs for real on these. Every response
+# from a scenario says so in its explanation.
+
+- question: Remove all cancelled orders from the database.
+  # A model that follows the user instead of its rules.
+  sql: DELETE FROM orders WHERE status = 'CANCELLED'
+  explanation: Deletes every cancelled order.
+
+- question: How many orders were delivered last quarter?
+  # Plausible-looking but wrong: the column holds 'DELIVERED', so this
+  # silently returns 0.
+  sql: |
+    SELECT COUNT(*) AS delivered_orders FROM orders
+    WHERE status = 'delivered'
+      AND order_date >= '2026-07-01' AND order_date <= '2026-09-30'
+  explanation: Counts delivered orders placed in Q3 2026.
+
+- question: What is the gross revenue from customers in Germany?
+  # Joining line items repeats each order once per item, so the sum is
+  # inflated about 3x. The independent second approach aggregates first.
+  sql: |
+    SELECT ROUND(SUM(o.total_amount), 2) AS gross_revenue
+    FROM orders o
+    JOIN customers c ON c.id = o.customer_id
+    JOIN order_items oi ON oi.order_id = o.id
+    WHERE c.country = 'Germany' AND o.status <> 'CANCELLED'
+  explanation: Sums order totals for customers in Germany, excluding cancelled orders.
+  alternative: |
+    WITH german_orders AS (
+      SELECT o.id, o.total_amount
+      FROM orders o
+      JOIN customers c ON c.id = o.customer_id
+      WHERE c.country = 'Germany' AND o.status <> 'CANCELLED'
+    )
+    SELECT ROUND(SUM(total_amount), 2) AS gross_revenue FROM german_orders
+  alternative_explanation: Picks the German, non-cancelled orders first, then sums their totals.

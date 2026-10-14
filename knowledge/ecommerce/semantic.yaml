@@ -1,0 +1,96 @@
+# Business meaning for the sample e-commerce database.
+# Every table and column named here is checked against the extracted schema.
+
+# Dialect the example and test SQL is written in; it is translated automatically
+# (sqlglot) when the database is something else, e.g. PostgreSQL in Docker.
+sql_dialect: sqlite
+
+tables:
+  customers:
+    description: One row per registered customer.
+    synonyms: [client, buyer, shopper, user]
+    columns:
+      country: Country the customer is based in.
+      segment: Customer type used by sales.
+      created_at: When the customer registered (sign-up date).
+  products:
+    description: Product catalogue. One row per product.
+    synonyms: [item, sku, catalogue]
+    columns:
+      name: Product display name.
+      category: Product category.
+      unit_price: Current list price in USD.
+      supplier_id: Internal supplier code. There is no suppliers table.
+  orders:
+    description: One row per customer order (purchase).
+    synonyms: [purchase, sale, transaction]
+    columns:
+      order_date: Date the order was placed.
+      status: Fulfilment status of the order.
+      channel: Where the order was placed.
+      total_amount: Order value in USD, the sum of its line items.
+      external_ref_id: Reference in the payment provider's system.
+  order_items:
+    description: One row per product line within an order.
+    synonyms: [line item, basket item]
+    columns:
+      quantity: Units of the product in this line.
+      unit_price: Price per unit in USD at the time of the order.
+  support_tickets:
+    description: Customer support requests.
+    synonyms: [ticket, complaint, support case]
+    columns:
+      opened_at: When the ticket was opened.
+      priority: Urgency assigned by the support team.
+      subject: Short issue summary, usually "<issue> - <product name>".
+      resolved: Whether the ticket has been closed as resolved.
+  order_summary:
+    description: Convenience view of orders with the customer's country.
+
+glossary:
+  - term: revenue
+    synonyms: [sales, income, turnover]
+    description: Money earned from orders. Gross and net are both in use.
+    definitions:
+      - name: gross revenue
+        sql: SUM(orders.total_amount) WHERE orders.status <> 'CANCELLED'
+        note: For product or category breakdowns use SUM(order_items.quantity * order_items.unit_price) with the same status filter.
+      - name: net revenue
+        sql: SUM(orders.total_amount) WHERE orders.status NOT IN ('CANCELLED', 'RETURNED')
+        note: Gross revenue minus returned orders.
+
+  - term: average order value
+    synonyms: [aov, average basket, avg order value]
+    definitions:
+      - name: average order value
+        sql: AVG(orders.total_amount) WHERE orders.status <> 'CANCELLED'
+
+  - term: units sold
+    synonyms: [quantity sold, items sold]
+    definitions:
+      - name: units sold
+        sql: SUM(order_items.quantity) joined to orders WHERE orders.status <> 'CANCELLED'
+
+  - term: active customer
+    synonyms: [active customers, active user]
+    definitions:
+      - name: active customer
+        sql: customer with at least one order WHERE orders.status <> 'CANCELLED' AND orders.order_date >= date(<today>, '-90 days')
+
+  - term: new customer
+    synonyms: [new customers, signups, sign-ups]
+    definitions:
+      - name: new customer
+        sql: customers counted by customers.created_at falling in the period asked about
+
+  - term: completed order
+    synonyms: [fulfilled order, delivered order]
+    definitions:
+      - name: completed order
+        sql: orders.status = 'DELIVERED'
+
+  - term: open ticket
+    synonyms: [unresolved ticket, open tickets, unresolved tickets]
+    definitions:
+      - name: open ticket
+        sql: NOT support_tickets.resolved
